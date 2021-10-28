@@ -1,0 +1,295 @@
+openapi: 3.0.2
+info:
+  title: QGen Direct 
+  version: '1.0.0' 
+  # Describe your API here, you can use GFM (https://guides.github.com/features/mastering-markdown) here
+  description: |
+    This API enables QGen clients to integrate their systems with QGen to access our services.
+    It is written supporting the openAPI standards and all data returned is in JSON format. 
+    
+    Requests should be directed to the appropriate API URL 
+
+    - Staging: https://devdwayraapi.knowmenow.com/api/v1
+    - Production: https://proddwayraapi.knowmenow.com/api/v1
+
+    All API requests must be made over HTTPS and HTTP is not supported. 
+    See the Authentication section for information on correctly authenticating calls 
+    to the QGen Direct API.
+
+    For any queries please contact: support@qgengroup.com
+
+  termsOfService: 'http://qgengroup.com'
+  contact:
+    name: API Dev Team
+    email: support@qgengroup.com
+    url: 'https://qgengroup.com/contact/'
+  license:
+    name: QGen Agreement
+    url: 'http://qgengroup.com'
+ 
+
+
+   
+servers:
+  - url: https://devdwayraapi.knowmenow.com/api/v1
+    description: staging and testing server
+  - url: https://proddwayraapi.knowmenow.com/api/v1
+    description: Production server
+
+paths:
+  /public/appversion:
+
+    # parameters list that are used with each operation for this path
+
+    get: # documentation for GET operation for this path
+      tags:
+        - Public
+
+      summary: Test the connection is ok
+      
+      description: |
+        Checks that the server is alive and to help your team confirm there are no 
+        connection issues between your server and ours. No authorisation is required. 
+        If successful, it returns an object with version details that confirm the 
+        server is healthy. There is no need to include this call in any of your 
+        programs. 
+
+      responses: # list of responses
+        '200':
+          description: Success
+          content:
+            application/json: # operation response mime type
+              schema: # response schema can be specified for each response
+                type: object
+                properties:
+                  config:
+                    type: object
+                    properties:
+                      id: 
+                       type: string
+                      key: 
+                        type: string
+                      value: 
+                       type: string
+                      modifiedAt:
+                        type: string
+                      createdAt:
+                        type: string
+
+              example: # response example
+                config:
+                  id: 5f75e5ae165bc849b11ee6ab
+                  key: app_version
+                  value: 1.0.13
+                  modifiedAt: '2021-01-13T14:19:56.435Z'
+                  createdAt: '2020-10-01T14:20:30.53Z'
+
+        '403':
+          description: Forbidden
+        '404':
+          description: User not found
+
+      security: []
+
+
+  /public/auth:
+
+    post:
+      tags:
+        - Public
+
+      summary: Get session token
+      description: |
+        Authorization to access a resource is granted after authentication of the
+        key issued by QGen specifically to you (Client). The authentication key is 
+        cliemt-based. This endpoint converts your secret key, if validated, into
+        a JWT session token. You can call this multiple times during your session
+        and keep an eye on the expiry time provided with the token in the response. 
+        When the current one expires, make another call to this endpoint for a new
+        token.
+
+        Parameters required:
+        - apikey
+
+      security: []
+
+      # request body documentation
+      requestBody:
+        description: Send the secret key and respective key name
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apikey:
+                  type: string
+                  description: the secret key prvided by QGen
+
+            example:
+              apikey: 001821d3a70c221ffdbf6dfa0278f133
+
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid user supplied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  http_status_code:
+                    type: string
+                  internal_status_code:
+                    type: string
+                  error_const:
+                    type: string
+                  error_message: 
+                    type: string
+
+              example:
+                http_status_code: 400
+                internal_status_code: 400
+                error_const: bad_request_error
+                error_message: "api key not found: not found"
+
+
+        '404':
+          description: User not found
+
+
+
+  /apikey/aml/search:
+
+    post:
+      tags:
+        - AML
+
+      summary: Search Names or Companies 
+      description: |
+        Send a search request to our AML name screening services.
+        Create a new search by POSTing search terms, parameters and filters. 
+        By default creating a search will pull the first 100 results (if that 
+        many exist) from our database. By using the offset and limit parameters, 
+        you can expand this, or create multiple searches which "paginate" through 
+        our data sources.  
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                search_term: 
+                  type: string
+                  maxLength: 255
+                fuzziness:
+                  description: |
+                                  Determines how closely the returned results must match 
+                                  the supplied name. Overridden by exact_match parameter
+                                  setting in this request
+                  type: number
+                  format: float
+                  minimum: 0.0
+                  maximum: 1.0
+                client_ref:
+                  type: string
+                  maxLength: 255
+                filters:
+                  type: object
+                  properties: 
+                    entity_type:
+                      type: string
+                    birth_year: 
+                      type: string
+                    country_codes: 
+                      description: | 
+                                      Results are filtered by the entity nationality or 
+                                      country of residence. Array of ISO 3166-1 alpha-2 strings 
+                      type: array
+                      items: 
+                        type: string
+                    types:
+                      description: |  
+                                      These types are used within the search to refine 
+                                      the result set. There is an extensive range of 
+                                      filters available - use of the filters is entirely 
+                                      optional. The example shows how the filters should 
+                                      be included in your request. You must send a value
+                                      from the allowed list as documented here.
+                      type: array
+                      items: 
+                        type: string
+                        enum: 
+                          - sanction
+                          - warning  
+                          - fitness-probity
+                          - pep
+                          - pep-class-1
+                          - pep-class-2
+                          - pep-class-3
+                          - pep-class-4
+                          - adverse-media
+                          - adverse-media-financial-crime
+                          - adverse-media-violent-crime
+                          - adverse-media-sexual-crime
+                          - adverse-media-terrorism
+                          - adverse-media-fraud
+                          - adverse-media-narcotics
+                          - adverse-media-general
+              required:
+                - search_term
+
+
+
+            example:
+              search_term: Sylvester Stallone
+              fuzziness: 0.5
+              client_ref: TEST240921-1448
+              filters:
+                entity_type: "person"
+                birth_year: "1971"
+                country_codes: ["US"]
+                types: ["adverse-media", "pep-class-1", "pep-class-2", "warning"]
+
+
+
+        required: true
+
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Invalid user supplied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth:
+                    type: string
+                  expiry:
+                    type: string
+              example:
+                auth: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X3JlZl9pZCI6IjVlZGUxNzk1MTExMWZjMjRkODliYmE3YSIsImNsYWltcyI6WyJHb2QiXSwiZW1haWwiOiJnb2R3aW4uc2NoZW1icmlAa25vd21lbm93LmNvbSIsImV4cCI6MTYzMzk2NzQ3MSwiaWQiOiI1ZjI0MmNhNzdhOGFkYzAwMDE3N2Q0Y2IiLCJpc3MiOiJLbm93TWVOb3ciLCJtZXJjaGFudF9yZWZfaWQiOiI1ZWRlMTc5NTExMTFmYzI0ZDg5YmJhN2IiLCJvcmlnX2lhdCI6MTYzMzk1MzA3MSwidXNlcl9yZWZfaWQiOiI1ZjI0MmNhN2M3NjZhZDAwMDFjOTY2MTkifQ.YZcPOBJ7oZDGPCvcQ8x1xr3IFi1IxwSrUThfvF0lOdQ'             
+                expiry: 2021-10-11T15:51:11.644772253Z
+
+
+        '404':
+          description: User not found
+
+
+
+
+security:
+  - JWTAuthToken: []
+
+components:
+  securitySchemes:
+
+    JWTAuthToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
